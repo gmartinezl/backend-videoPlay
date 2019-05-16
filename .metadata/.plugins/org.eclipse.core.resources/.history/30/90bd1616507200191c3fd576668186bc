@@ -1,0 +1,5 @@
+package com.videoplay.app.model.entity;
+
+public class Usuario {
+
+}

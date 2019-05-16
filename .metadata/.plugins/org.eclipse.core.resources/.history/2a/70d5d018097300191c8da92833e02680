@@ -1,0 +1,28 @@
+package com.videoplay.app.backend.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.videoplay.app.backend.model.entity.Cancion;
+import com.videoplay.app.backend.model.entity.Usuario;
+import com.videoplay.app.backend.model.service.ICancionService;
+
+@CrossOrigin(origins = {"http://localhost:4200"})
+@RestController
+@RequestMapping("/api")
+public class CancionRestController {
+	
+	@Autowired
+	private ICancionService cancionService;
+	
+	@GetMapping("/canciones")
+	public List<Cancion> index(){
+		return cancionService.findAll();
+	}
+
+}

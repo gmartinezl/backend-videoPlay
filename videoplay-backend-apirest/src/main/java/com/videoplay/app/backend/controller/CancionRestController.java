@@ -1,0 +1,165 @@
+package com.videoplay.app.backend.controller;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.videoplay.app.backend.model.entity.Cancion;
+import com.videoplay.app.backend.model.service.ICancionService;
+
+@CrossOrigin(origins = { "http://localhost:4200" })
+@RestController
+@RequestMapping("/api")
+public class CancionRestController {
+
+	@Autowired
+	private ICancionService cancionService;
+
+	@GetMapping("/canciones")
+	public List<Cancion> index() {
+		return cancionService.findAll();
+	}
+
+	// response entity representa totalmente la respuesta http: status code,
+	// headers, body.
+	// asi que la usamos para configurar la respuesta http.
+	@GetMapping("/canciones/{id}")
+	// pathvariable obtiene la id pasada por la url
+	public ResponseEntity<?> show(@PathVariable Long id) {
+		// cliente buscado
+		Cancion buscado = null;
+		// respuesta http
+		Map<String, Object> response = new HashMap<>();
+
+		try {
+			buscado = cancionService.findById(id);
+		} catch (DataAccessException e) {
+			response.put("mensaje", "Error al consultar en la base de datos");
+			response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage()));
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		if (buscado == null) {
+			// si buscado es nulo no esta en la base dedatos
+			response.put("mensaje",
+					"La canción con ID: ".concat(id.toString().concat(" no existe en la base de datos")));
+
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.NOT_FOUND);
+		}
+
+		return new ResponseEntity<Cancion>(buscado, HttpStatus.OK);
+	}
+
+	@PostMapping("/canciones")
+	// para poder transformar la peticion en formato json
+	public ResponseEntity<?> subir(@Valid @RequestBody Cancion cancion, BindingResult result) {
+		Cancion cancionNew = null;
+		Map<String, Object> response = new HashMap<>();
+		if (result.hasErrors()) {
+
+			List<String> errors = result.getFieldErrors().stream()
+					.map(err -> "El campo '" + err.getField() + "' " + err.getDefaultMessage())
+					.collect(Collectors.toList());
+
+			response.put("errors", errors);
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.BAD_REQUEST);
+		}
+
+		try {
+			cancionNew = cancionService.save(cancion);
+		} catch (DataAccessException e) {
+			response.put("mensaje", "Error al insertar en la base de datos");
+			response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage()));
+			System.out.println("no entra en la funcion");
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		response.put("mensaje", "La canción se ha subido con éxito");
+		response.put("cancion", cancionNew);
+
+		return new ResponseEntity<Map<String, Object>>(response, HttpStatus.CREATED);
+	}
+
+	@PutMapping("/canciones/{id}")
+	
+	public ResponseEntity<?> update(@RequestBody Cancion cancion,BindingResult result, @PathVariable Long id) {
+		Cancion actualizado = null;
+		
+		Cancion cancionActual = cancionService.findById(id);
+
+
+		Map<String, Object> response = new HashMap<>();
+		
+		if(result.hasErrors()) {
+			
+			List <String> errors = result.getFieldErrors()
+					.stream()
+					.map(err ->"El campo '"+err.getField() +"' "+err.getDefaultMessage())
+					.collect(Collectors.toList());
+					
+			response.put("errors", errors);
+			return new ResponseEntity< Map<String, Object> > ( response, HttpStatus.BAD_REQUEST);
+		}
+		
+		
+		if(cancionActual == null) {
+			response.put("mensaje", "Error: no se pudo editar,la canción id: "+id.toString()+" no se encuentra en la bbdd.");
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.NOT_FOUND);
+		}
+		
+		try {
+			//actualizamos con la id de la request
+			cancionActual.setTitulo(cancion.getTitulo());
+			cancionActual.setArtista(cancion.getArtista());
+			cancionActual.setDuracion(cancion.getDuracion());
+			
+			actualizado = cancionService.save(cancionActual);
+		}catch(DataAccessException e) {
+			response.put("mensaje","Error al actualizar en la base de datos");
+			response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage())); 
+			return new ResponseEntity< Map<String, Object> > ( response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		response.put("mensaje", "Canción actualizado con exito");
+		response.put("cancione", actualizado);
+		return new ResponseEntity<Map<String, Object>> (response, HttpStatus.CREATED);
+	}
+
+	@DeleteMapping("/canciones/{id}")
+	public ResponseEntity<?> delete(@PathVariable Long id) {
+Map<String, Object> response = new HashMap<>();
+		
+		try {
+			cancionService.delete(id);
+		}catch(DataAccessException e) {
+			response.put("mensaje", "Error al eliminar la cancion con id: ".concat(id.toString()));
+			response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage())); 
+;
+			return new ResponseEntity<Map<String, Object>> (response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		response.put("mensaje", "Cancion eliminada");
+		
+		return new ResponseEntity<Map<String, Object>> (response, HttpStatus.OK);
+	}
+
+}

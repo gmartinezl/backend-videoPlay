@@ -1,0 +1,5 @@
+package com.videoplay.app.backend.model.dao;
+
+public interface ICancionDao {
+
+}
